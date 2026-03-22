@@ -14,11 +14,8 @@ app.use(express.json());
 
 // ---- DATABASE CONNECTION ----
 const db = new Pool({
-  host: process.env.DB_HOST || "localhost",
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || "rivayo_db",
-  user: process.env.DB_USER || "postgres",
-  password: process.env.DB_PASS || "",
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
 });
 
 // ---- JWT MIDDLEWARE ----
