@@ -239,7 +239,7 @@ function Auth({ onLogin }) {
   const ripple=useRipple();
   const [mode,setMode]=useState("login");const[name,setName]=useState("");const[phone,setPhone]=useState("");const[pin,setPin]=useState("");
   const [loading,setLoading]=useState(false);const[err,setErr]=useState("");const[foc,setFoc]=useState("");
-  const API = "http://localhost:3001/api";
+  const API = "https://rivayo-paryaj-production.up.railway.app/api";
   const fS=k=>({...IS,borderColor:foc===k?"rgba(0,230,118,.45)":"rgba(255,255,255,.1)"});
   const go=async e=>{
     ripple(e,"rgba(0,230,118,.3)");setErr("");
