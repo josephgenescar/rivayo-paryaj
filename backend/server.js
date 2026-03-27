@@ -553,3 +553,48 @@ app.get("/api/health", (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// ====================================================
+// API FOOTBALL - Match Live (RapidAPI)
+// ====================================================
+
+// GET /api/football/live - Match k ap jwe kounye a
+app.get("/api/football/live", async (req, res) => {
+  try {
+    const response = await fetch(
+      "https://free-api-live-football-data.p.rapidapi.com/football-current-live",
+      {
+        headers: {
+          "x-rapidapi-host": "free-api-live-football-data.p.rapidapi.com",
+          "x-rapidapi-key": process.env.RAPIDAPI_KEY,
+        },
+      }
+    );
+    const data = await response.json();
+    res.json({ matches: data });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Pa ka jwenn match live" });
+  }
+});
+
+// GET /api/football/today - Match jodi a
+app.get("/api/football/today", async (req, res) => {
+  try {
+    const today = new Date().toISOString().split("T")[0];
+    const response = await fetch(
+      `https://free-api-live-football-data.p.rapidapi.com/football-get-matches-by-date?date=${today}`,
+      {
+        headers: {
+          "x-rapidapi-host": "free-api-live-football-data.p.rapidapi.com",
+          "x-rapidapi-key": process.env.RAPIDAPI_KEY,
+        },
+      }
+    );
+    const data = await response.json();
+    res.json({ matches: data });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Pa ka jwenn match jodi a" });
+  }
+});
