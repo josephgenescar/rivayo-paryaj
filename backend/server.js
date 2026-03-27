@@ -7,9 +7,20 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
 require("dotenv").config();
+const axios = require("axios");
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: [
+    "https://rivayo-paryaj.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:3001",
+  ],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
+app.options("*", cors());
 app.use(express.json());
 
 // ---- DATABASE CONNECTION ----
@@ -561,7 +572,7 @@ app.get("/api/health", (req, res) => {
 // GET /api/football/live - Match k ap jwe kounye a
 app.get("/api/football/live", async (req, res) => {
   try {
-    const response = await fetch(
+    const { data } = await axios.get(
       "https://free-api-live-football-data.p.rapidapi.com/football-current-live",
       {
         headers: {
@@ -570,10 +581,9 @@ app.get("/api/football/live", async (req, res) => {
         },
       }
     );
-    const data = await response.json();
     res.json({ matches: data });
   } catch (err) {
-    console.error(err);
+    console.error(err.message);
     res.status(500).json({ error: "Pa ka jwenn match live" });
   }
 });
@@ -582,7 +592,7 @@ app.get("/api/football/live", async (req, res) => {
 app.get("/api/football/today", async (req, res) => {
   try {
     const today = new Date().toISOString().split("T")[0];
-    const response = await fetch(
+    const { data } = await axios.get(
       `https://free-api-live-football-data.p.rapidapi.com/football-get-matches-by-date?date=${today}`,
       {
         headers: {
@@ -591,10 +601,9 @@ app.get("/api/football/today", async (req, res) => {
         },
       }
     );
-    const data = await response.json();
     res.json({ matches: data });
   } catch (err) {
-    console.error(err);
+    console.error(err.message);
     res.status(500).json({ error: "Pa ka jwenn match jodi a" });
   }
 });
