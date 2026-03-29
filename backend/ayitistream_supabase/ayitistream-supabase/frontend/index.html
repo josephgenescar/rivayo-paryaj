@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="ht">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AyitiStream</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--ac:#1a9e5c;--ac2:#158a4e;--rd:#e53935;--tx:#111;--mu:#888;--bd:#e8e8e8;--bg:#fff;--s1:#f7f7f7}
+html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Inter',system-ui,sans-serif;color:var(--tx)}
+
+/* ── NAV TÈT ── */
+.topnav{position:fixed;top:0;left:0;right:0;z-index:100;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:var(--bg);border-bottom:1px solid var(--bd)}
+.logo{font-size:20px;font-weight:800;letter-spacing:-.5px}
+.logo em{color:var(--ac);font-style:normal}
+.nav-tabs{display:flex}
+.nav-tab{padding:6px 14px;font-size:13px;font-weight:500;color:var(--mu);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.nav-tab.on{color:var(--tx);border-bottom-color:var(--tx)}
+.nav-right{display:flex;align-items:center;gap:8px}
+.btn-sm{padding:6px 13px;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;border:1px solid var(--bd);background:none;color:var(--mu)}
+.btn-sm:hover{border-color:#bbb;color:var(--tx)}
+.btn-green{background:var(--ac);color:#fff;border-color:var(--ac);font-weight:600}
+.btn-green:hover{background:var(--ac2)}
+.user-av{width:32px;height:32px;border-radius:50%;background:var(--ac);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0}
+
+/* ── FEED ── */
+.feed{position:fixed;top:52px;bottom:56px;left:0;right:0;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none}
+.feed::-webkit-scrollbar{display:none}
+
+/* ── VIDEO ITEM ── */
+.vitem{scroll-snap-align:start;position:relative;background:#000;overflow:hidden}
+.vbg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.vbg iframe{width:100%;height:100%;border:none}
+.vbg img{width:100%;height:100%;object-fit:cover}
+.vbg .ph{font-size:80px;background:#111;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+.vbg::after{content:'';position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.88) 0%,rgba(0,0,0,.1) 55%,transparent 100%);pointer-events:none}
+.tap{position:absolute;inset:0;z-index:2;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.pause-ic{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.18);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;pointer-events:none}
+.pause-ic svg{width:28px;height:28px;fill:#fff;margin-left:3px}
+.vitem.paused .pause-ic{opacity:1}
+
+/* ── ACTIONS ── */
+.vacts{position:absolute;right:12px;bottom:110px;z-index:5;display:flex;flex-direction:column;align-items:center;gap:20px}
+.vact{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer}
+.vic{width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.15);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;font-size:21px;transition:background .15s}
+.vact:hover .vic{background:rgba(255,255,255,.28)}
+.vic.liked{background:rgba(229,57,53,.35)}
+.vcnt{font-size:12px;color:#fff;font-weight:600;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+.av-w{position:relative}
+.v-av{width:46px;height:46px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;background:#333;overflow:hidden}
+.v-av img{width:100%;height:100%;object-fit:cover}
+.fbtn{position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:20px;height:20px;border-radius:50%;background:var(--ac);border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:700;cursor:pointer;transition:background .15s}
+.fbtn.on{background:#666}
+
+/* ── INFO ── */
+.vinfo{position:absolute;bottom:0;left:0;right:68px;z-index:5;padding:14px 14px 20px}
+.vu-row{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.vname{font-size:15px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.5);cursor:pointer}
+.vdesc{font-size:13px;color:rgba(255,255,255,.92);line-height:1.5;margin-bottom:7px;text-shadow:0 1px 3px rgba(0,0,0,.5);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.vtags{display:flex;gap:6px;flex-wrap:wrap}
+.vtag{font-size:12px;color:rgba(255,255,255,.8);font-weight:500}
+
+/* ── NAV ANBA ── */
+.botnav{position:fixed;bottom:0;left:0;right:0;z-index:100;height:56px;display:flex;align-items:center;justify-content:space-around;background:var(--bg);border-top:1px solid var(--bd)}
+.bn{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:var(--mu);cursor:pointer;padding:4px 10px}
+.bn.on{color:var(--tx);font-weight:600}
+.bn-ic{font-size:20px}
+.bn-up{background:var(--ac);border-radius:10px;padding:8px 16px;display:flex;align-items:center;gap:4px;font-size:13px;font-weight:700;color:#fff;cursor:pointer}
+
+/* ── OVERLAY / SHEET ── */
+.overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.open{opacity:1;pointer-events:all}
+.sheet{background:var(--bg);border-radius:16px 16px 0 0;width:100%;max-width:560px;padding:20px 20px 36px;transform:translateY(100%);transition:transform .25s;max-height:92vh;overflow-y:auto}
+.overlay.open .sheet{transform:translateY(0)}
+.handle{width:36px;height:4px;border-radius:2px;background:var(--bd);margin:0 auto 16px}
+.sh-title{font-size:16px;font-weight:700;margin-bottom:4px}
+.sh-sub{font-size:12px;color:var(--mu);margin-bottom:16px}
+
+/* Fòm */
+.fg{margin-bottom:12px}
+.fg label{display:block;font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:500}
+.fg input,.fg select,.fg textarea{width:100%;background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;color:var(--tx);font-size:13px;outline:none;font-family:inherit}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--ac)}
+.fg textarea{resize:vertical;min-height:70px}
+.drop-z{border:2px dashed var(--bd);border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:border-color .15s;margin-bottom:12px}
+.drop-z:hover,.drop-z.drag{border-color:var(--ac)}
+.drop-z input{display:none}
+.drop-z .dz-ic{font-size:28px}
+.drop-z p{font-size:13px;color:var(--mu);margin-top:6px}
+.prog{height:4px;background:var(--bd);border-radius:2px;margin-bottom:12px;overflow:hidden;display:none}
+.prog-fill{height:100%;background:var(--ac);border-radius:2px;width:0%;transition:width .3s}
+.row-btns{display:flex;gap:8px;margin-top:14px}
+.row-btns button{flex:1;padding:12px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;border:none;font-family:inherit}
+.b-cancel{background:var(--s1);color:var(--mu)}
+.b-submit{background:var(--ac);color:#fff}
+.b-submit:disabled{opacity:.5;cursor:not-allowed}
+
+/* Auth */
+.auth-tabs{display:flex;margin-bottom:18px;border-bottom:1px solid var(--bd)}
+.at{flex:1;text-align:center;padding:10px;font-size:14px;font-weight:500;color:var(--mu);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.at.on{color:var(--tx);border-bottom-color:var(--tx)}
+.aform{display:none}
+.aform.on{display:block}
+.err{background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:8px 12px;font-size:12px;color:#b91c1c;margin-bottom:10px;display:none}
+.err.show{display:block}
+
+/* Kòmantè */
+.clist{min-height:160px;max-height:48vh;overflow-y:auto;margin-bottom:12px}
+.ci{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)}
+.c-av{width:30px;height:30px;border-radius:50%;background:var(--s1);border:1px solid var(--bd);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--mu)}
+.c-bd{flex:1}
+.c-nm{font-size:12px;font-weight:600;color:var(--tx);margin-bottom:2px}
+.c-tx{font-size:13px;color:#333;line-height:1.4}
+.c-tm{font-size:11px;color:var(--mu);margin-top:2px}
+.cinput{display:flex;gap:8px;align-items:center;padding-top:10px;border-top:1px solid var(--bd)}
+.cinput input{flex:1;background:var(--s1);border:1px solid var(--bd);border-radius:20px;padding:9px 14px;font-size:13px;outline:none;font-family:inherit}
+.cinput input:focus{border-color:var(--ac)}
+.csend{background:var(--ac);color:#fff;border:none;border-radius:20px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+
+/* Toast */
+.toast{position:fixed;bottom:72px;left:50%;transform:translateX(-50%) translateY(10px);z-index:500;background:rgba(0,0,0,.85);color:#fff;border-radius:8px;padding:10px 18px;font-size:13px;opacity:0;transition:all .2s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Spin */
+.spin-wrap{height:100%;display:flex;align-items:center;justify-content:center;background:#000}
+.spin{width:32px;height:32px;border:3px solid rgba(255,255,255,.2);border-top-color:var(--ac);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ── KONFIGIRASYON — CHANJE SA ── -->
+<script>
+// 1. Al nan Supabase > Settings > API
+// 2. Kopye Project URL ak anon key ou yo, kole yo isit
+const SUPABASE_URL     = 'https://jgrqwlwpqrppshzgvdxm.supabase.co';        // <-- chanje
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpncnF3bHdwcXJwcHNoemd2ZHhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NzYyMjMsImV4cCI6MjA5MDE1MjIyM30.E42gJGKSHL7RXjD19SIL2EiEb5g8Eo4zTVRSYY46f38';                         // <-- chanje
+const EDGE_FN_URL      = `${SUPABASE_URL}/functions/v1/upload-streamtape`;
+</script>
+
+<!-- NAV TÈT -->
+<div class="topnav">
+  <div class="logo">Ayiti<em>Stream</em></div>
+  <div class="nav-tabs">
+    <div class="nav-tab" onclick="setTab(this,'abonman')">Abònman</div>
+    <div class="nav-tab on" onclick="setTab(this,'pouou')">Pou Ou</div>
+    <div class="nav-tab" onclick="setTab(this,'live')">🔴 Live</div>
+  </div>
+  <div class="nav-right" id="navRight"></div>
+</div>
+
+<!-- FEED -->
+<div class="feed" id="feed"><div class="spin-wrap"><div class="spin"></div></div></div>
+
+<!-- NAV ANBA -->
+<div class="botnav">
+  <div class="bn on" onclick="setBn(this,'home')"><div class="bn-ic">⌂</div><div>Akèy</div></div>
+  <div class="bn" onclick="setBn(this,'search')"><div class="bn-ic">🔍</div><div>Chèche</div></div>
+  <div class="bn-up" onclick="openUpload()">＋ Kreye</div>
+  <div class="bn" onclick="setBn(this,'msg')"><div class="bn-ic">💬</div><div>Mesaj</div></div>
+  <div class="bn" onclick="setBn(this,'profile')"><div class="bn-ic">👤</div><div>Pwofil</div></div>
+</div>
+
+<!-- UPLOAD SHEET -->
+<div class="overlay" id="upOv" onclick="if(event.target===this)closeUpload()">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="handle"></div>
+    <div class="sh-title">Pibliye yon vidéo</div>
+    <div class="sh-sub">Vidéo ou ap anrejistre otomatikman</div>
+    <div class="drop-z" id="dropZ" onclick="document.getElementById('fileIn').click()"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="onDrop(event)">
+      <input type="file" id="fileIn" accept="video/*" onchange="onFile(this)">
+      <div class="dz-ic">🎬</div>
+      <p id="dzTxt">Klike oswa glise yon vidéo isit</p>
+    </div>
+    <div class="prog" id="prog"><div class="prog-fill" id="progFill"></div></div>
+    <div class="fg"><label>Tit *</label><input id="vTitle" placeholder="Dekri vidéo ou a..."></div>
+    <div class="fg">
+      <label>Kategori</label>
+      <select id="vCat">
+        <option value="mizik">🎵 Mizik & Konpa</option>
+        <option value="komedi">😂 Komedi</option>
+        <option value="espo">⚽ Espò</option>
+        <option value="kwizin">🍽️ Kwizin</option>
+        <option value="edikasyon">🎓 Edikasyon</option>
+        <option value="aktyalite">📰 Aktyalite</option>
+        <option value="dans">💃 Dans</option>
+        <option value="relijyon">📖 Relijyon</option>
+      </select>
+    </div>
+    <div class="fg"><label>Deskripsyon</label><textarea id="vDesc" placeholder="Ajoute yon deskripsyon..."></textarea></div>
+    <div class="fg"><label>Tags (koma)</label><input id="vTags" placeholder="ayiti, komedi, viral"></div>
+    <div class="row-btns">
+      <button class="b-cancel" onclick="closeUpload()">Anile</button>
+      <button class="b-submit" id="subBtn" onclick="submitVideo()" disabled>Pibliye</button>
+    </div>
+  </div>
+</div>
+
+<!-- AUTH SHEET -->
+<div class="overlay" id="authOv" onclick="if(event.target===this)closeAuth()">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="handle"></div>
+    <div class="auth-tabs">
+      <div class="at on" onclick="switchAt('login')">Konekte</div>
+      <div class="at" onclick="switchAt('reg')">Kreye kont</div>
+    </div>
+    <div class="aform on" id="loginF">
+      <div class="err" id="lErr"></div>
+      <div class="fg"><label>Imel</label><input id="lEmail" type="email" placeholder="imel@ou.com"></div>
+      <div class="fg"><label>Modpas</label><input id="lPass" type="password" placeholder="••••••"></div>
+      <div class="row-btns">
+        <button class="b-cancel" onclick="closeAuth()">Anile</button>
+        <button class="b-submit" onclick="doLogin()">Konekte</button>
+      </div>
+    </div>
+    <div class="aform" id="regF">
+      <div class="err" id="rErr"></div>
+      <div class="fg"><label>Non itilizatè</label><input id="rUser" placeholder="@non_ou"></div>
+      <div class="fg"><label>Imel</label><input id="rEmail" type="email" placeholder="imel@ou.com"></div>
+      <div class="fg"><label>Modpas</label><input id="rPass" type="password" placeholder="Omwen 6 karaktè"></div>
+      <div class="row-btns">
+        <button class="b-cancel" onclick="closeAuth()">Anile</button>
+        <button class="b-submit" onclick="doRegister()">Kreye kont</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- KÒMANTÈ SHEET -->
+<div class="overlay" id="cmtOv" onclick="if(event.target===this)closeCmt()">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="handle"></div>
+    <div class="sh-title">Kòmantè</div>
+    <div class="clist" id="clist"></div>
+    <div class="cinput">
+      <input id="cmtTxt" placeholder="Ekri yon kòmantè..." onkeydown="if(event.key==='Enter')sendCmt()">
+      <button class="csend" onclick="sendCmt()">Voye</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── INIT SUPABASE ──
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let videos = [];
+let curVideoId = null;
+let selFile = null;
+let likeMap = {};
+let followMap = {};
+
+// ── DEMO DATA si Supabase pa konfigire ──
+const DEMOS = [
+  {id:'d1',title:'Ti Jan ale nan entèvyou men li pa t prepare 💀',description:'Pataje si ou ri!',category:'komedi',tags:['#komedi','#ayiti'],username:'RiyoKomedi',avatar_url:'',embed_url:'',thumbnail_url:'',views:284000,likes_count:18400,comments_count:920,_ph:'😂',_bg:'#1a0505'},
+  {id:'d2',title:'Nouvo son Konpa Twopikal — Album 2025 🔥',description:'Kite kòmantè ou anba!',category:'mizik',tags:['#konpa','#mizik'],username:'KonpaOfficial',avatar_url:'',embed_url:'',thumbnail_url:'',views:3400000,likes_count:512000,comments_count:34000,_ph:'🎵',_bg:'#030d03'},
+  {id:'d3',title:'Grenadye ap bat tout moun! 🇭🇹⚽',description:'Nou fyè de ekip nasyonal la!',category:'espo',tags:['#grenadye','#football'],username:'EspoAyiti',avatar_url:'',embed_url:'',thumbnail_url:'',views:5100000,likes_count:891000,comments_count:67000,_ph:'⚽',_bg:'#010108'},
+  {id:'d4',title:'Recèt Griot ak Pikliz 🍽️',description:'Manje Ayisyen pi bon nan lemonn!',category:'kwizin',tags:['#kwizin','#griot'],username:'ChefGinou',avatar_url:'',embed_url:'',thumbnail_url:'',views:890000,likes_count:178000,comments_count:12000,_ph:'🍗',_bg:'#100800'},
+  {id:'d5',title:'Rasin dans tradisyonèl Ayisyen 🥁',description:'Kilti nou se fyète nou tout!',category:'dans',tags:['#dans','#rasin'],username:'DansAyiti',avatar_url:'',embed_url:'',thumbnail_url:'',views:2100000,likes_count:334000,comments_count:21000,_ph:'💃',_bg:'#0d0010'},
+  {id:'d6',title:'Klas Angle Gratis pou Ayisyen — Ep. 5 🎓',description:'Aprann anglè fasil!',category:'edikasyon',tags:['#angle','#edikasyon'],username:'LekòlDijital',avatar_url:'',embed_url:'',thumbnail_url:'',views:670000,likes_count:67000,comments_count:8900,_ph:'📚',_bg:'#00080d'},
+];
+
+// ── LOAD ──
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) { currentUser = session.user; updateNav(); }
+  sb.auth.onAuthStateChange((_e, s) => { currentUser = s?.user || null; updateNav(); });
+  loadFeed();
+}
+
+function updateNav() {
+  const el = document.getElementById('navRight');
+  if (currentUser) {
+    const init = (currentUser.user_metadata?.username || currentUser.email || 'U')[0].toUpperCase();
+    el.innerHTML = `<button class="btn-sm btn-green" onclick="openUpload()">+ Kreye</button><div class="user-av" title="${currentUser.email}">${init}</div><button class="btn-sm" onclick="doLogout()">Sòti</button>`;
+  } else {
+    el.innerHTML = `<button class="btn-sm btn-green" onclick="openAuth()">Konekte</button>`;
+  }
+}
+
+async function loadFeed() {
+  const feed = document.getElementById('feed');
+  try {
+    const { data, error } = await sb.from('videos_feed').select('*').limit(20);
+    if (error || !data?.length) throw new Error();
+    videos = data;
+  } catch {
+    videos = DEMOS;
+  }
+  renderFeed();
+}
+
+function fmtN(n){
+  if(n>=1e6)return(n/1e6).toFixed(1)+'M';
+  if(n>=1e3)return(n/1e3).toFixed(0)+'K';
+  return n||0;
+}
+
+function renderFeed(){
+  const feed = document.getElementById('feed');
+  const h = window.innerHeight - 52 - 56;
+  feed.innerHTML = '';
+  if(!videos.length){
+    feed.innerHTML=`<div style="height:${h}px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:#888"><div style="font-size:48px">📭</div><p>Pa gen vidéo pou kounye a</p></div>`;
+    return;
+  }
+  videos.forEach((v,i)=>{
+    const el = document.createElement('div');
+    el.className='vitem'; el.id='vi'+i; el.style.height=h+'px';
+    const init=(v.username||'?')[0].toUpperCase();
+    const liked=likeMap[v.id]||false;
+    const followed=followMap[v.user_id]||false;
+    let media='';
+    if(v.embed_url) media=`<iframe src="${v.embed_url}" allowfullscreen allow="autoplay; encrypted-media"></iframe>`;
+    else if(v.thumbnail_url) media=`<img src="${v.thumbnail_url}" alt="${v.title}">`;
+    else media=`<div class="ph" style="background:${v._bg||'#111'};font-size:80px;width:100%;height:100%;display:flex;align-items:center;justify-content:center">${v._ph||'🎬'}</div>`;
+
+    el.innerHTML=`
+      <div class="vbg">${media}</div>
+      <div class="tap" onclick="tapV(${i})"><div class="pause-ic"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div></div>
+      <div class="vacts">
+        <div class="vact">
+          <div class="av-w">
+            <div class="v-av">${v.avatar_url?`<img src="${v.avatar_url}">`:`${init}`}</div>
+            <div class="fbtn ${followed?'on':''}" id="fb${i}" onclick="toggleFollow(event,'${v.user_id}',${i})">${followed?'✓':'+'}</div>
+          </div>
+        </div>
+        <div class="vact" onclick="toggleLike(event,'${v.id}',${i})">
+          <div class="vic ${liked?'liked':''}" id="li${i}">${liked?'❤️':'🤍'}</div>
+          <div class="vcnt" id="lc${i}">${fmtN(v.likes_count)}</div>
+        </div>
+        <div class="vact" onclick="openCmt('${v.id}')">
+          <div class="vic">💬</div>
+          <div class="vcnt">${fmtN(v.comments_count)}</div>
+        </div>
+        <div class="vact" onclick="shareV('${v.id}','${(v.title||'').replace(/'/g,"\\'")}')">
+          <div class="vic">↗</div>
+          <div class="vcnt">Pataje</div>
+        </div>
+      </div>
+      <div class="vinfo">
+        <div class="vu-row"><div class="vname">@${v.username||'unknown'}</div><span style="font-size:13px">✅</span></div>
+        <div class="vdesc">${v.title||''}</div>
+        <div class="vtags">${(v.tags||[]).map(t=>`<span class="vtag">${t}</span>`).join('')}</div>
+      </div>`;
+    feed.appendChild(el);
+  });
+  window.onresize=()=>{const h2=window.innerHeight-52-56;document.querySelectorAll('.vitem').forEach(e=>e.style.height=h2+'px');};
+}
+
+function tapV(i){document.getElementById('vi'+i)?.classList.toggle('paused');}
+
+// ── LIKE ──
+async function toggleLike(e,vid,idx){
+  e.stopPropagation();
+  if(!currentUser){openAuth();return;}
+  const wasLiked=likeMap[vid]||false;
+  likeMap[vid]=!wasLiked;
+  const icon=document.getElementById('li'+idx);
+  const cnt=document.getElementById('lc'+idx);
+  if(icon){icon.textContent=likeMap[vid]?'❤️':'🤍';icon.classList.toggle('liked',likeMap[vid]);}
+  const cur=parseInt(cnt?.textContent)||0;
+  if(cnt) cnt.textContent=fmtN(likeMap[vid]?cur+1:Math.max(0,cur-1));
+  if(wasLiked){
+    await sb.from('likes').delete().match({user_id:currentUser.id,video_id:vid});
+  } else {
+    await sb.from('likes').insert({user_id:currentUser.id,video_id:vid});
+  }
+}
+
+// ── FOLLOW ──
+async function toggleFollow(e,uid,idx){
+  e.stopPropagation();
+  if(!currentUser){openAuth();return;}
+  if(!uid||uid==='undefined'||uid===currentUser.id)return;
+  const was=followMap[uid]||false;
+  followMap[uid]=!was;
+  const btn=document.getElementById('fb'+idx);
+  if(btn){btn.textContent=followMap[uid]?'✓':'+';btn.classList.toggle('on',followMap[uid]);}
+  try {
+    if(was){
+      await sb.from('follows').delete().match({follower_id:currentUser.id,following_id:uid});
+      toast('Ou retire swiv la');
+    } else {
+      await sb.from('follows').insert({follower_id:currentUser.id,following_id:uid});
+      toast('✓ Ou swiv kreeyatè sa a');
+    }
+  } catch(err) {
+    // Revèse si erè
+    followMap[uid]=was;
+    if(btn){btn.textContent=was?'✓':'+';btn.classList.toggle('on',was);}
+    toast('Erè — eseye ankò');
+  }
+}
+
+// ── KÒMANTÈ ──
+async function openCmt(vid){
+  curVideoId=vid;
+  document.getElementById('clist').innerHTML='<div style="text-align:center;padding:20px;color:#888">Ap chaje...</div>';
+  document.getElementById('cmtOv').classList.add('open');
+  try {
+    const {data, error}=await sb.from('comments')
+      .select('id, text, created_at, user_id, profiles(username, avatar_url)')
+      .eq('video_id',vid)
+      .order('created_at',{ascending:false});
+    const list=document.getElementById('clist');
+    if(error||!data?.length){
+      list.innerHTML='<div style="text-align:center;padding:20px;color:#888">Pa gen kòmantè — sou premye a!</div>';
+      return;
+    }
+    list.innerHTML=data.map(c=>`
+      <div class="ci">
+        <div class="c-av">${(c.profiles?.username||'?')[0].toUpperCase()}</div>
+        <div class="c-bd">
+          <div class="c-nm">@${c.profiles?.username||'?'}</div>
+          <div class="c-tx">${c.text}</div>
+          <div class="c-tm">${timeAgo(c.created_at)}</div>
+        </div>
+      </div>`).join('');
+  } catch(err) {
+    document.getElementById('clist').innerHTML='<div style="text-align:center;padding:20px;color:#888">Erè chajman</div>';
+  }
+}
+function closeCmt(){document.getElementById('cmtOv').classList.remove('open');}
+async function sendCmt(){
+  if(!currentUser){closeCmt();openAuth();return;}
+  const txt=document.getElementById('cmtTxt').value.trim();
+  if(!txt||!curVideoId)return;
+  try {
+    const{error}=await sb.from('comments').insert({video_id:curVideoId,user_id:currentUser.id,text:txt});
+    if(!error){
+      document.getElementById('cmtTxt').value='';
+      openCmt(curVideoId);
+      toast('✓ Kòmantè voye!');
+    } else {
+      toast('Erè — konekte anvan kòmante');
+    }
+  } catch(err){
+    toast('Erè — eseye ankò');
+  }
+}
+
+// ── SHARE ──
+function shareV(id,title){
+  const url=window.location.href.split('?')[0]+'?v='+id;
+  // Kopye nan clipboard — mache sou tout navigatè
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(()=>{
+      toast('🔗 Lyen kopye nan clipboard!');
+    }).catch(()=>{
+      // Metòd altènatif si clipboard bloke
+      const el=document.createElement('textarea');
+      el.value=url; el.style.position='fixed'; el.style.opacity='0';
+      document.body.appendChild(el); el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      toast('🔗 Lyen kopye!');
+    });
+  } else {
+    // Metòd ansyen pou vye navigatè
+    const el=document.createElement('textarea');
+    el.value=url; el.style.position='fixed'; el.style.opacity='0';
+    document.body.appendChild(el); el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    toast('🔗 Lyen kopye!');
+  }
+}
+
+// ── UPLOAD ──
+function openUpload(){if(!currentUser){openAuth();return;}document.getElementById('upOv').classList.add('open');}
+function closeUpload(){
+  document.getElementById('upOv').classList.remove('open');
+  selFile=null;
+  document.getElementById('dzTxt').textContent='Klike oswa glise yon vidéo isit';
+  document.getElementById('dropZ').classList.remove('drag');
+  document.getElementById('subBtn').disabled=true;
+  document.getElementById('prog').style.display='none';
+  document.getElementById('progFill').style.width='0%';
+}
+function onDrop(e){e.preventDefault();const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('video/')){selFile=f;document.getElementById('dzTxt').textContent='✓ '+f.name;document.getElementById('dropZ').classList.add('drag');document.getElementById('subBtn').disabled=false;}}
+function onFile(inp){if(inp.files[0]){selFile=inp.files[0];document.getElementById('dzTxt').textContent='✓ '+selFile.name;document.getElementById('dropZ').classList.add('drag');document.getElementById('subBtn').disabled=false;}}
+
+async function submitVideo(){
+  if(!selFile||!currentUser)return;
+  const title=document.getElementById('vTitle').value.trim();
+  if(!title){toast('Tit obligatwa');return;}
+  const btn=document.getElementById('subBtn');
+  btn.disabled=true;btn.textContent='Ap voye...';
+  document.getElementById('prog').style.display='block';
+  let p=0;const iv=setInterval(()=>{p=Math.min(p+4,88);document.getElementById('progFill').style.width=p+'%';},200);
+
+  try {
+    // 1. Kreye anrejistreman nan Supabase
+    const {data:vid,error:ve}=await sb.from('videos').insert({
+      user_id:currentUser.id,
+      title,
+      description:document.getElementById('vDesc').value,
+      category:document.getElementById('vCat').value,
+      tags:document.getElementById('vTags').value.split(',').map(t=>t.trim()).filter(Boolean),
+      status:'processing'
+    }).select().single();
+    if(ve){console.error('Supabase insert error:', ve); throw new Error(ve.message||'Erè kreye vidéo nan baz done');}
+
+    // 2. Voye sou Edge Function (ki voye sou Boodstream an kache)
+    const {data:{session}}=await sb.auth.getSession();
+    const fd=new FormData();
+    fd.append('file',selFile);
+    fd.append('video_id',vid.id);
+    fd.append('title',title);
+    const resp=await fetch(EDGE_FN_URL,{method:'POST',headers:{Authorization:`Bearer ${session.access_token}`},body:fd});
+    clearInterval(iv);document.getElementById('progFill').style.width='100%';
+    if(resp.ok){
+      toast('✓ Vidéo pibliye! Li pral parèt byento.');
+      closeUpload();setTimeout(loadFeed,5000);
+    } else {
+      let errMsg = 'Erè upload';
+      try { const er=await resp.json(); errMsg=er.error||er.message||errMsg; } catch(e){}
+      console.error('Edge function error:', errMsg);
+      toast('Erè: ' + errMsg);
+      btn.disabled=false;btn.textContent='Pibliye';
+    }
+  } catch(err){
+    clearInterval(iv);
+    console.error('Upload error:', err);
+    toast('Erè: ' + (err.message || 'verifye konsòl la'));
+    btn.disabled=false;btn.textContent='Pibliye';
+  }
+}
+
+// ── AUTH ──
+function openAuth(){document.getElementById('authOv').classList.add('open');}
+function closeAuth(){document.getElementById('authOv').classList.remove('open');}
+function switchAt(t){
+  document.querySelectorAll('.at').forEach((x,i)=>x.classList.toggle('on',(t==='login'&&i===0)||(t==='reg'&&i===1)));
+  document.getElementById('loginF').classList.toggle('on',t==='login');
+  document.getElementById('regF').classList.toggle('on',t==='reg');
+}
+async function doLogin(){
+  const em=document.getElementById('lEmail').value.trim();
+  const pw=document.getElementById('lPass').value;
+  const er=document.getElementById('lErr');er.classList.remove('show');
+  const{error}=await sb.auth.signInWithPassword({email:em,password:pw});
+  if(error){er.textContent=error.message;er.classList.add('show');return;}
+  closeAuth();toast('Byenveni!');loadFeed();
+}
+async function doRegister(){
+  const un=document.getElementById('rUser').value.trim();
+  const em=document.getElementById('rEmail').value.trim();
+  const pw=document.getElementById('rPass').value;
+  const er=document.getElementById('rErr');er.classList.remove('show');
+  const{error}=await sb.auth.signUp({email:em,password:pw,options:{data:{username:un}}});
+  if(error){er.textContent=error.message;er.classList.add('show');return;}
+  closeAuth();toast('Kont kreye! Verifye imel ou pou konfime.');
+}
+async function doLogout(){await sb.auth.signOut();toast('Ou dekonekte');}
+
+// ── HELPERS ──
+function setTab(el,tab){
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  // Filtre feed selon tab
+  if(tab==='abonman'){
+    if(!currentUser){openAuth();return;}
+    toast('Abònman — byento disponib');
+  } else if(tab==='live'){
+    toast('Live — byento disponib');
+  } else {
+    loadFeed();
+  }
+}
+function setBn(el,sec){
+  document.querySelectorAll('.bn').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  if(sec==='profile'){
+    if(!currentUser){openAuth();}
+    else{toast('Pwofil — byento disponib');}
+  } else if(sec==='search'){
+    toast('Rechèch — byento disponib');
+  } else if(sec==='msg'){
+    toast('Mesaj — byento disponib');
+  } else if(sec==='home'){
+    loadFeed();
+  }
+}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+function timeAgo(d){const s=Math.floor((Date.now()-new Date(d))/1000);if(s<60)return'kounye a';if(s<3600)return Math.floor(s/60)+'min';if(s<86400)return Math.floor(s/3600)+'h';return Math.floor(s/86400)+'j';}
+
+init();
+</script>
+</body>
+</html>
