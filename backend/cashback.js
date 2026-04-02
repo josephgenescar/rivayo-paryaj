@@ -1,11 +1,10 @@
 // ============================================================
 // RIVAYO PARYAJ - Sistèm Remèt 10% Sou Pèt (Weekly Cashback)
-// Kouri chak lendi 06:00 AM otomatikman
-// Oswa manyèlman: node cashback.js
+// Kouri chak lendi 06:00 AM otomatikman via server.js
+// Oswa manyèlman: node cashback.js --now
 // ============================================================
 require("dotenv").config();
 const { Pool } = require("pg");
-const cron = require("node-cron");
 
 const db = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -26,14 +25,12 @@ async function runWeeklyCashback() {
   try {
     await client.query("BEGIN");
 
-    // Jwenn tout itilizatè ki gen pèt nèt pandan 7 jou pase yo
-    // Sèlman mise REYÈL (pas bonus) ki konte
     const result = await client.query(`
       SELECT
         b.user_id,
         u.name,
         u.phone,
-        SUM(b.amount)                                          AS total_mise,
+        SUM(b.amount) AS total_mise,
         SUM(CASE WHEN b.status = 'won' THEN b.potential_win ELSE 0 END) AS total_genyen,
         SUM(b.amount) - SUM(CASE WHEN b.status = 'won' THEN b.potential_win ELSE 0 END) AS pèt_nèt
       FROM bets b
@@ -41,8 +38,8 @@ async function runWeeklyCashback() {
       WHERE
         b.created_at >= NOW() - INTERVAL '7 days'
         AND b.status IN ('won', 'lost')
-        AND b.used_bonus = false        -- Sèlman mise reyèl, PAS bonus
-        AND NOT EXISTS (               -- Pa genyen deja cashback semèn sa
+        AND b.used_bonus = false
+        AND NOT EXISTS (
           SELECT 1 FROM transactions t
           WHERE t.user_id = b.user_id
             AND t.type = 'cashback'
@@ -50,7 +47,6 @@ async function runWeeklyCashback() {
         )
       GROUP BY b.user_id, u.name, u.phone
       HAVING
-        -- Pèt nèt > 0 (yo pèdi) epi depase minimòm lan
         SUM(b.amount) - SUM(CASE WHEN b.status = 'won' THEN b.potential_win ELSE 0 END) >= $1
     `, [CASHBACK_MIN_LOSS]);
 
@@ -60,40 +56,27 @@ async function runWeeklyCashback() {
     let nbItilizatè = 0;
 
     for (const row of result.rows) {
-      const pètNèt    = parseFloat(row.pèt_nèt);
-      let cashback    = Math.round(pètNèt * (CASHBACK_PCT / 100));
-
-      // Aplike maksimòm
+      const pètNèt = parseFloat(row.pèt_nèt);
+      let cashback = Math.round(pètNèt * (CASHBACK_PCT / 100));
       if (cashback > CASHBACK_MAX) cashback = CASHBACK_MAX;
 
-      // Ajoute cashback nan BONUS (pa reyèl) itilizatè a
       await client.query(
         "UPDATE users SET bonus_balance = bonus_balance + $1 WHERE id = $2",
         [cashback, row.user_id]
       );
 
-      // Anrejistre tranzaksyon an
       await client.query(`
         INSERT INTO transactions (user_id, type, amount, description, status)
         VALUES ($1, 'cashback', $2, $3, 'completed')
-      `, [
-        row.user_id,
-        cashback,
-        `Cashback 10% — Pèt ${Math.round(pètNèt)} HTG semèn pase`
-      ]);
+      `, [row.user_id, cashback, `Cashback 10% — Pèt ${Math.round(pètNèt)} HTG semèn pase`]);
 
-      totalPaye   += cashback;
+      totalPaye += cashback;
       nbItilizatè += 1;
-
-      console.log(`  ✅ ${row.name} (${row.phone}) — Pèt: ${Math.round(pètNèt)} HTG → Cashback: ${cashback} HTG`);
+      console.log(`  ✅ ${row.name} (${row.phone}) — Cashback: ${cashback} HTG`);
     }
 
     await client.query("COMMIT");
-
-    console.log(`\n🎉 [CASHBACK] Terminé!`);
-    console.log(`   👥 Itilizatè touche: ${nbItilizatè}`);
-    console.log(`   💰 Total cashback paye: ${totalPaye} HTG (bonus)`);
-    console.log(`   ⏰ ${new Date().toISOString()}\n`);
+    console.log(`🎉 [CASHBACK] Terminé! ${nbItilizatè} itilizatè — ${totalPaye} HTG paye`);
 
   } catch (err) {
     await client.query("ROLLBACK");
@@ -103,22 +86,7 @@ async function runWeeklyCashback() {
   }
 }
 
-// ============================================================
-// SCHEDULE: Kouri chak Lendi 06:00 AM otomatikman
-// ============================================================
-// Syntax cron: "minit   zèdtan   jou-mwa   mwa   jou-semèn"
-//              "0       6        *          *      1"   ← Lendi 06:00
-cron.schedule("0 6 * * 1", () => {
-  console.log("⏰ [CRON] Lendi maten — Kòmanse cashback otomatik...");
-  runWeeklyCashback();
-}, {
-  timezone: "America/Port-au-Prince"
-});
-
-console.log("✅ [CASHBACK] Sèvis cashback ap tann... (Kouri chak Lendi 06:00 AM)");
-console.log("💡 Pou kouri manyèlman kounye a, tape: node -e \"require('./cashback').runNow()\"");
-
-// Ekspòte pou itilize nan lòt fichye oswa teste
+// Ekspòte pou itilize nan server.js
 module.exports = { runWeeklyCashback };
 
 // Kouri dirèkteman si lanse kòm script: node cashback.js --now
