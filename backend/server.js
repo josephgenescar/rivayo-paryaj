@@ -280,10 +280,9 @@ cron.schedule("0 6 * * 1", () => {
 // START SERVER
 // ====================================================
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`🎯 RIVAYO PARYAJ API ap koure sou pò ${PORT}`);
   console.log(`✅ [CASHBACK] Sèvis cashback ap tann... (Kouri chak Lendi 06:00 AM)`);
-  console.log(`💡 Pou kouri manyèlman kounye a, tape: node -e "require('./cashback').runNow()"`);
 });
 
 module.exports = app;
