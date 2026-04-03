@@ -282,7 +282,8 @@ cron.schedule("0 6 * * 1", () => {
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🎯 RIVAYO PARYAJ API ap koure sou pò ${PORT}`);
-  console.log(`✅ [CASHBACK] Sèvis cashback ap tann... (Kouri chak Lendi 06:00 AM)`);
+  console.log(`✅ DATABASE_URL: ${process.env.DATABASE_URL ? "CHAJE ✅" : "PA CHAJE ❌"}`);
+  console.log(`✅ [CASHBACK] Sèvis cashback ap tann...`);
 });
 
 module.exports = app;
