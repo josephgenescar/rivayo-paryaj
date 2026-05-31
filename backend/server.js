@@ -11,13 +11,24 @@ const axios = require("axios");
 require("dotenv").config();
 
 const app = express();
+// Load and validate important environment variables for security
+const isProd = process.env.NODE_ENV === "production";
+if (!process.env.JWT_SECRET) {
+  console.error("FATAL: JWT_SECRET pa defini. Mete yon valè sekirite nan anviwònman an.");
+  process.exit(1);
+}
+
+// Configure CORS origins from environment for tighter control
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim())
+  : [
+      "https://rivayo-paryaj.vercel.app",
+      "http://localhost:3000",
+      "http://localhost:3001",
+    ];
 
 app.use(cors({
-  origin: [
-    "https://rivayo-paryaj.vercel.app",
-    "http://localhost:3000",
-    "http://localhost:3001",
-  ],
+  origin: allowedOrigins,
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -26,17 +37,26 @@ app.options("*", cors());
 app.use(express.json());
 
 // ---- DATABASE CONNECTION ----
+// Use stricter SSL verification by default. To allow skipping certificate
+// verification (not recommended) set PGSSLMODE=no-verify in your env.
+if (!process.env.DATABASE_URL) {
+  console.error("FATAL: DATABASE_URL pa defini. Mete Supabase Postgres connection string la.");
+  process.exit(1);
+}
+
+const sslConfig = process.env.PGSSLMODE === "no-verify" ? { rejectUnauthorized: false } : { rejectUnauthorized: true };
 const db = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+  ssl: sslConfig,
 });
 
 // ---- JWT MIDDLEWARE ----
 const authMiddleware = (req, res, next) => {
-  const token = req.headers.authorization?.split(" ")[1];
-  if (!token) return res.status(401).json({ error: "Token manke" });
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) return res.status(401).json({ error: "Token manke oswa move fòm" });
+  const token = authHeader.split(" ")[1];
   try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET || "rivayo_secret_2024");
+    req.user = jwt.verify(token, process.env.JWT_SECRET);
     next();
   } catch {
     res.status(401).json({ error: "Token pa valid" });
@@ -282,7 +302,6 @@ cron.schedule("0 6 * * 1", () => {
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🎯 RIVAYO PARYAJ API ap koure sou pò ${PORT}`);
-  console.log(`✅ DATABASE_URL: ${process.env.DATABASE_URL ? "CHAJE ✅" : "PA CHAJE ❌"}`);
   console.log(`✅ [CASHBACK] Sèvis cashback ap tann...`);
 });
 

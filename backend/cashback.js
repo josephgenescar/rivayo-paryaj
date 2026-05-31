@@ -8,7 +8,7 @@ const { Pool } = require("pg");
 
 const db = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+  ssl: process.env.PGSSLMODE === "no-verify" ? { rejectUnauthorized: false } : { rejectUnauthorized: true },
 });
 
 const CASHBACK_MIN_LOSS = parseFloat(process.env.CASHBACK_MIN_LOSS) || 500;

@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "cashback": "node cashback.js"
+    "cashback": "node cashback.js",
+    "db:import": "node scripts/import_schema.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
