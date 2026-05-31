@@ -732,7 +732,7 @@ function WalletTab({ user, onDeposit, txHistory }) {
     setStep(2);
     try {
       const token = localStorage.getItem("rivayo_token");
-      const res = await fetch("http://localhost:3001/api/wallet/deposit/moncash",{
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:3001/api"}/wallet/deposit/moncash`,{
         method:"POST",
         headers:{"Content-Type":"application/json","Authorization":`Bearer ${token}`},
         body: JSON.stringify({amount:parseFloat(amt), moncashPhone:ph||user.phone})
@@ -740,7 +740,7 @@ function WalletTab({ user, onDeposit, txHistory }) {
       const data = await res.json();
       // Konfime depo a otomatikman (sandbox mode)
       if(data.simulatedConfirm){
-        await fetch(`http://localhost:3001${data.simulatedConfirm}`,{method:"POST"});
+        await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:3001/api"}${data.simulatedConfirm}`,{method:"POST"});
       }
       setStep(3);
       onDeposit(parseFloat(amt));
@@ -1085,7 +1085,7 @@ export default function App() {
     });
   };
 
-  const API_URL = "http://localhost:3001/api";
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3001/api";
 
   const apiFetch = async (path, options={}) => {
     const token = localStorage.getItem("rivayo_token");
