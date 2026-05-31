@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: rivayo-paryaj-backend
+    env: node
+    plan: free
+    branch: main
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: ALLOWED_ORIGINS
+        value: https://rivayo-paryaj.vercel.app,http://localhost:3000
+      - key: PGSSLMODE
+        value: strict
+    secrets:
+      - DATABASE_URL
+      - JWT_SECRET
+      - SUPABASE_URL
+      - SUPABASE_SERVICE_ROLE_KEY
